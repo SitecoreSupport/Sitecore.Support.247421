@@ -337,10 +337,18 @@
             }
             else
             {
-                SheerResponse.ShowModalDialog(new SelectPlaceholderSettingsOptions
+                var options = new SelectPlaceholderSettingsOptions
                 {
                     IsPlaceholderKeyEditable = true
-                }.ToUrlString().ToString(), "460px", "460px", string.Empty, response: true);
+                };
+                var queryString = WebUtil.ParseQueryString(System.Web.HttpContext.Current.Request.Url.Query);
+                if (queryString.ContainsKey("id"))
+                {
+                    string value = System.Web.HttpUtility.UrlDecode(queryString["id"]);
+                    string key = "contextItemId";
+                    options.Parameters = $"{key}={value}";
+                }
+                SheerResponse.ShowModalDialog(options.ToUrlString().ToString(), "460px", "460px", string.Empty, response: true);
                 args.WaitForPostBack();
             }
         }
