@@ -2,6 +2,7 @@
 {
     using Microsoft.Extensions.DependencyInjection;
     using Sitecore;
+    using Sitecore.Abstractions;
     using Sitecore.Configuration;
     using Sitecore.Data;
     using Sitecore.Data.Fields;
@@ -50,6 +51,8 @@
         private Border Caching;
 
         private ID _cachingSectionId = ID.Parse("{64CA39AE-89D3-4A78-B1F9-9E907CAAE6BC}");
+
+        protected BaseClient BaseClient => ServiceLocator.ServiceProvider.GetService<BaseClient>();
 
         private Item ContextItem
         {
@@ -239,7 +242,12 @@
             RegisterStartupScripts();
             if (extendedSelectPlaceholderSettingsOptions.CurrentItemUri == null)
             {
-                ContextItem = GetCurrentItemFromSession();
+                Item item = GetCurrentItemFromSession();
+                if (item == null)
+                {
+                    item = GetCurrentItemFromRerquestUrl();
+                }
+                ContextItem = item;
             }
             else
             {
@@ -253,6 +261,27 @@
                 TemplateForCreation = TemplateManager.GetTemplate(ID.Parse(Sitecore.XA.Foundation.PlaceholderSettings.Templates.SxaPlaceholder.ID), Client.ContentDatabase);
             }
             RenderCachingFields(extendedSelectPlaceholderSettingsOptions.CurrentSettingsItem);
+        }
+
+        protected virtual Item GetCurrentItemFromRerquestUrl()
+        {
+            string key = "contextItemId";
+            string queryString = System.Web.HttpContext.Current.Request.Url.Query;
+            var parameters = WebUtil.ParseQueryString(queryString)["parameters"];
+            var decodedParameters = System.Web.HttpUtility.UrlDecode(parameters);
+            if (decodedParameters != null)
+            {
+                var safeDictionary = WebUtil.ParseQueryString(decodedParameters);
+                if (safeDictionary.ContainsKey(key))
+                {
+                    var idRaw = safeDictionary[key];
+                    if (!string.IsNullOrWhiteSpace(idRaw) && ID.TryParse(idRaw, out ID id))
+                    {
+                        return BaseClient.ContentDatabase.GetItem(id);
+                    }
+                }
+            }
+            return null;
         }
 
         protected virtual void RenderCachingFields(Item currentSettingsItem)
