@@ -263,26 +263,44 @@
             RenderCachingFields(extendedSelectPlaceholderSettingsOptions.CurrentSettingsItem);
         }
 
+        //fix of the issue 247421
         protected virtual Item GetCurrentItemFromRerquestUrl()
         {
-            string key = "contextItemId";
+            Item item = null;
             string queryString = System.Web.HttpContext.Current.Request.Url.Query;
-            var parameters = WebUtil.ParseQueryString(queryString)["parameters"];
-            var decodedParameters = System.Web.HttpUtility.UrlDecode(parameters);
-            if (decodedParameters != null)
+            var parameters = WebUtil.ParseQueryString(queryString);
+            if (parameters != null)
             {
-                var safeDictionary = WebUtil.ParseQueryString(decodedParameters);
-                if (safeDictionary.ContainsKey(key))
+                string key = "cdi";
+                var parameterValue = WebUtil.ParseQueryString(queryString)[key];
+                var decodedParameters = System.Web.HttpUtility.UrlDecode(parameterValue);
+                if (decodedParameters != null)
                 {
-                    var idRaw = safeDictionary[key];
-                    if (!string.IsNullOrWhiteSpace(idRaw) && ID.TryParse(idRaw, out ID id))
+                    item = BaseClient.ContentDatabase.GetItem(decodedParameters);
+                }
+
+                if (item == null)
+                {
+                    key = "contextItemId";
+                    var parametersValue = WebUtil.ParseQueryString(queryString)["parameters"];
+                    decodedParameters = System.Web.HttpUtility.UrlDecode(parametersValue);
+                    if (decodedParameters != null)
                     {
-                        return BaseClient.ContentDatabase.GetItem(id);
+                        var safeDictionary = WebUtil.ParseQueryString(decodedParameters);
+                        if (safeDictionary.ContainsKey(key))
+                        {
+                            var idRaw = safeDictionary[key];
+                            if (!string.IsNullOrWhiteSpace(idRaw) && ID.TryParse(idRaw, out ID id))
+                            {
+                                item = BaseClient.ContentDatabase.GetItem(id);
+                            }
+                        }
                     }
                 }
             }
-            return null;
+            return item;
         }
+        //end of the fix
 
         protected virtual void RenderCachingFields(Item currentSettingsItem)
         {
